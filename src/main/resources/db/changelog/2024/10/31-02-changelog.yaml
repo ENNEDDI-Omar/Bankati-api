@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1730397712393-1
+      author: Youcode
+      objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
+      changes:
+        - dropColumn:
+            columnName: name
+            tableName: users
+
