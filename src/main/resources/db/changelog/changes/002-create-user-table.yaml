@@ -8,14 +8,25 @@ databaseChangeLog:
             tableName: users
             columns:
               - column:
-                  name: user_id
-                  type: long
+                  name: id
+                  type: bigint
                   autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password
                   type: varchar(255)
                   constraints:
                     nullable: false
@@ -39,3 +50,16 @@ databaseChangeLog:
             referencedTableName: roles
             referencedColumnNames: id
             constraintName: fk_user_role
+        # Ajout d'index pour améliorer les performances avec de grandes quantités de données
+        - createIndex:
+            indexName: idx_user_name
+            tableName: users
+            columns:
+              - column:
+                  name: name
+        - createIndex:
+            indexName: idx_user_role
+            tableName: users
+            columns:
+              - column:
+                  name: role_id

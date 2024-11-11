@@ -9,7 +9,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
+                  type: bigint  # équivalent à long en Java
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -20,3 +20,10 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
+        # Ajout d'index pour améliorer les performances
+        - createIndex:
+            indexName: idx_role_name
+            tableName: roles
+            columns:
+              - column:
+                  name: name
