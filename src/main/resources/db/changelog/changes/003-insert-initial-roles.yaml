@@ -1,0 +1,24 @@
+# src/main/resources/db/changelog/changes/003-insert-initial-roles.yaml
+databaseChangeLog:
+  - changeSet:
+      id: 003-insert-initial-roles
+      author: omario
+      changes:
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: "ADMIN"
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: "USER"
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: "MANAGER"
