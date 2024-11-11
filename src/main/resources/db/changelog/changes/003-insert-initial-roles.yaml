@@ -21,4 +21,4 @@ databaseChangeLog:
             columns:
               - column:
                   name: name
-                  value: "MANAGER"
+                  value: "EMPLOYEE"
