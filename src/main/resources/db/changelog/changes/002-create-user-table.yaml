@@ -58,6 +58,14 @@ databaseChangeLog:
               - column:
                   name: name
         - createIndex:
+            indexName: idx_user_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
+            unique: true
+
+        - createIndex:
             indexName: idx_user_role
             tableName: users
             columns:
