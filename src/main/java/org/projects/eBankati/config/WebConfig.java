@@ -11,7 +11,11 @@ public class WebConfig {
     public FilterRegistrationBean<AuthenticationFilter> authenticationFilter() {
         FilterRegistrationBean<AuthenticationFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(new AuthenticationFilter());
-        registrationBean.addUrlPatterns("/api/auth/*");
+
+        // Protéger toutes les routes /api/ SAUF /api/auth/
+        registrationBean.addUrlPatterns("/api/*");
+        registrationBean.addInitParameter("excludePatterns", "/api/auth/login,/api/auth/register");
+
         return registrationBean;
     }
 }

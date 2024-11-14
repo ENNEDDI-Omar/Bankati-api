@@ -22,26 +22,46 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new AuthenticationException("Email already exists");
+        try {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                return AuthResponse.builder()
+                        .message("Email already exists")
+                        .success(false)
+                        .build();
+            }
+
+            // Récupérer le rôle USER
+            Role userRole = roleRepository.findByName("USER")
+                    .orElseGet(() -> {
+                        Role newRole = new Role();
+                        newRole.setName("USER");
+                        return roleRepository.save(newRole);
+                    });
+
+            // Créer l'utilisateur
+            User user = new User();
+            user.setName(request.getName());
+            user.setEmail(request.getEmail());
+            user.setPassword(BCrypt.hashpw(request.getPassword(), BCrypt.gensalt()));
+            user.setAge(request.getAge());
+            user.setRole(userRole);
+
+            // Définir des valeurs par défaut pour les champs non-null
+            user.setMonthlyIncome(0.0);
+            user.setCreditScore(0);
+
+            userRepository.save(user);
+
+            return AuthResponse.builder()
+                    .message("Registration successful")
+                    .success(true)
+                    .build();
+        } catch (Exception e) {
+            return AuthResponse.builder()
+                    .message("Registration failed: " + e.getMessage())
+                    .success(false)
+                    .build();
         }
-
-        User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(BCrypt.hashpw(request.getPassword(), BCrypt.gensalt()));
-        user.setAge(request.getAge());
-
-        Role userRole = roleRepository.findByName("USER")
-                .orElseThrow(() -> new AuthenticationException("Default role not found"));
-        user.setRole(userRole);
-
-        userRepository.save(user);
-
-        return AuthResponse.builder()
-                .message("Registration successful")
-                .success(true)
-                .build();
     }
 
     public AuthResponse login(LoginRequest request, HttpSession session) {

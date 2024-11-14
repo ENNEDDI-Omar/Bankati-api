@@ -12,12 +12,22 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        try {
+            AuthResponse response = authService.register(request);
+            if (response.isSuccess()) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), false));
+        }
     }
 
     @PostMapping("/login")

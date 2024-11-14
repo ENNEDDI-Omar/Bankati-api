@@ -28,10 +28,10 @@ public class User {
     @Column(name = "age", nullable = false)
     private Integer age;
 
-    @Column(name = "monthly_income")
+    @Column(name = "monthly_income", nullable = true)
     private Double monthlyIncome;
 
-    @Column(name = "credit_score")
+    @Column(name = "credit_score", nullable = true)
     private Integer creditScore;
 
 
