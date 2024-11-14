@@ -32,7 +32,6 @@ public class AuthService {
         user.setPassword(BCrypt.hashpw(request.getPassword(), BCrypt.gensalt()));
         user.setAge(request.getAge());
 
-
         Role userRole = roleRepository.findByName("USER")
                 .orElseThrow(() -> new AuthenticationException("Default role not found"));
         user.setRole(userRole);

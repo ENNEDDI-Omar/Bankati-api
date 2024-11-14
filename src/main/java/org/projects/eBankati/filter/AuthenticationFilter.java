@@ -6,10 +6,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
-public class AuthenticationFilter implements Filter {
+public class AuthenticationFilter implements Filter
+{
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+            throws IOException, ServletException
+    {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         String path = httpRequest.getRequestURI();
@@ -21,11 +23,11 @@ public class AuthenticationFilter implements Filter {
         }
 
         // Vérifier la session
-        HttpSession session = httpRequest.getSession(false);
-        if (session == null || session.getAttribute("userEmail") == null) {
-            httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated");
-            return;
-        }
+//        HttpSession session = httpRequest.getSession(false);
+//        if (session == null || session.getAttribute("userEmail") == null) {
+//            httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated");
+//            return;
+//        }
 
         chain.doFilter(request, response);
     }
