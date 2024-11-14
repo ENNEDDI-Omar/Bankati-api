@@ -4,19 +4,21 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 public class AuthenticationFilter implements Filter {
     private List<String> excludedUrls;
 
     @Override
     public void init(FilterConfig filterConfig) {
         String excludePattern = filterConfig.getInitParameter("excludePatterns");
-        if (excludePattern != null) {
-            excludedUrls = Arrays.asList(excludePattern.split(","));
-        }
+        excludedUrls = excludePattern != null ?
+                Arrays.asList(excludePattern.split(",")) :
+                Arrays.asList("/api/auth/login", "/api/auth/register");
     }
 
     @Override
@@ -26,16 +28,29 @@ public class AuthenticationFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         String path = httpRequest.getRequestURI();
 
-        // Vérifier si l'URL est exclue
-        if (isExcludedUrl(path)) {
+        // Log pour le débogage
+        log.debug("Processing request to path: {}", path);
+        log.debug("Excluded URLs: {}", excludedUrls);
+
+        // Permettre les requêtes OPTIONS (CORS preflight)
+        if (httpRequest.getMethod().equals("OPTIONS")) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Vérifier la session pour les autres URLs
+        // Vérifier si l'URL est exclue
+        if (isExcludedUrl(path)) {
+            log.debug("URL is excluded from authentication: {}", path);
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // Vérifier la session
         HttpSession session = httpRequest.getSession(false);
         if (session == null || session.getAttribute("userEmail") == null) {
-            httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "User not authenticated");
+            log.debug("Unauthorized access attempt to: {}", path);
+            httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            httpResponse.getWriter().write("User not authenticated");
             return;
         }
 
@@ -43,7 +58,6 @@ public class AuthenticationFilter implements Filter {
     }
 
     private boolean isExcludedUrl(String path) {
-        if (excludedUrls == null) return false;
         return excludedUrls.stream().anyMatch(path::endsWith);
     }
 
