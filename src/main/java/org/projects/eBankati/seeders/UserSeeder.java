@@ -52,7 +52,7 @@ public class UserSeeder implements CommandLineRunner {
 
         // Créer deux utilisateurs admin
         User admin1 = new User();
-        admin1.setName("Admin One");
+        admin1.setUsername("Admin One");
         admin1.setEmail("admin1@ebankati.com");
         admin1.setPassword(BCrypt.hashpw("admin123", BCrypt.gensalt()));
         admin1.setAge(30);
@@ -62,7 +62,7 @@ public class UserSeeder implements CommandLineRunner {
         userRepository.save(admin1);
 
         User admin2 = new User();
-        admin2.setName("Admin Two");
+        admin2.setUsername("Admin Two");
         admin2.setEmail("admin2@ebankati.com");
         admin2.setPassword(BCrypt.hashpw("admin456", BCrypt.gensalt()));
         admin2.setAge(35);
@@ -73,7 +73,7 @@ public class UserSeeder implements CommandLineRunner {
 
         // Créer deux utilisateurs normaux
         User user1 = new User();
-        user1.setName("User One");
+        user1.setUsername("User One");
         user1.setEmail("user1@ebankati.com");
         user1.setPassword(BCrypt.hashpw("user123", BCrypt.gensalt()));
         user1.setAge(25);
@@ -83,7 +83,7 @@ public class UserSeeder implements CommandLineRunner {
         userRepository.save(user1);
 
         User user2 = new User();
-        user2.setName("User Two");
+        user2.setUsername("User Two");
         user2.setEmail("user2@ebankati.com");
         user2.setPassword(BCrypt.hashpw("user456", BCrypt.gensalt()));
         user2.setAge(28);
@@ -94,7 +94,7 @@ public class UserSeeder implements CommandLineRunner {
 
         // Créer deux employées de la banque
         User emp1 = new User();
-        emp1.setName("Employee One");
+        emp1.setUsername("Employee One");
         emp1.setEmail("emp1@ebankati.com");
         emp1.setPassword(BCrypt.hashpw("emp123", BCrypt.gensalt()));
         emp1.setAge(25);

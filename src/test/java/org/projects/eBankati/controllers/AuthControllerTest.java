@@ -27,7 +27,7 @@ public class AuthControllerTest {
     @Test
     public void testRegisterSuccess() throws Exception {
         RegisterRequest request = new RegisterRequest();
-        request.setName("Test User");
+        request.setUsername("Test User");
         request.setEmail("test@example.com");
         request.setPassword("password123");
         request.setAge(25);
@@ -44,7 +44,7 @@ public class AuthControllerTest {
     public void testLoginSuccess() throws Exception {
         // D'abord enregistrer un utilisateur
         RegisterRequest registerRequest = new RegisterRequest();
-        registerRequest.setName("Login Test");
+        registerRequest.setUsername("Login Test");
         registerRequest.setEmail("login@example.com");
         registerRequest.setPassword("password123");
         registerRequest.setAge(25);
@@ -55,7 +55,7 @@ public class AuthControllerTest {
 
         // Ensuite tester le login
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("login@example.com");
+        loginRequest.setUsername("Login Test");
         loginRequest.setPassword("password123");
 
         mockMvc.perform(post("/api/auth/login")
@@ -69,7 +69,7 @@ public class AuthControllerTest {
     @Test
     public void testRegisterDuplicateEmail() throws Exception {
         RegisterRequest request = new RegisterRequest();
-        request.setName("Duplicate User");
+        request.setUsername("Duplicate User");
         request.setEmail("duplicate@example.com");
         request.setPassword("password123");
         request.setAge(25);
