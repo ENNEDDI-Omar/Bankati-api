@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-add-performance-indexes
+      author: omario
+      changes:
+        # Index pour les recherches sur le credit score
+        - createIndex:
+            indexName: idx_user_credit_score
+            tableName: users
+            columns:
+              - column:
+                  name: credit_score
+
+        # Index composite pour les recherches combinées age/revenu
+        - createIndex:
+            indexName: idx_user_age_income
+            tableName: users
+            columns:
+              - column:
+                  name: age
+              - column:
+                  name: monthly_income
+
+        # Ajouter des statistiques pour l'optimiseur PostgreSQL
+        - sql:
+            dbms: postgresql
+            sql: ANALYZE users;

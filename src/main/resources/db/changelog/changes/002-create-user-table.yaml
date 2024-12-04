@@ -15,7 +15,7 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: name
+                  name: username
                   type: varchar(255)
                   constraints:
                     nullable: false
@@ -52,11 +52,11 @@ databaseChangeLog:
             constraintName: fk_user_role
         # Ajout d'index pour améliorer les performances avec de grandes quantités de données
         - createIndex:
-            indexName: idx_user_name
+            indexName: idx_user_username
             tableName: users
             columns:
               - column:
-                  name: name
+                  name: username
         - createIndex:
             indexName: idx_user_email
             tableName: users
