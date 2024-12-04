@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class RegisterRequest {
-    @NotBlank(message = "Le nom est obligatoire")
+    @NotBlank(message = "Le nom d'utilisateur est obligatoire")
     @Size(min = 2, max = 20, message = "Le nom doit contenir entre 2 et 20 caractères")
     private String username;
 
