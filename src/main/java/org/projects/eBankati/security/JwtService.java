@@ -13,6 +13,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 @Service
@@ -28,10 +29,12 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {  // Correction des génériques
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
+
+    private final Map<String, Long> blacklistedTokens = new ConcurrentHashMap<>();
 
     public String generateToken(User user) {
         Map<String, Object> claims = new HashMap<>();

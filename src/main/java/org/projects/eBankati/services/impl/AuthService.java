@@ -91,8 +91,23 @@ public class AuthService {
     }
 
     public void logout(String token) {
-        // Ajouter le token à la blacklist
-        tokenBlacklist.addToBlacklist(token);
-        log.info("User logged out successfully");
+        if (token == null || token.isEmpty()) {
+            throw new AuthenticationException("Token is required for logout");
+        }
+
+        try {
+            // Vérifier si le token est valide avant de le blacklister
+            String username = jwtService.extractUsername(token);
+            User user = userRepository.findByUsername(username)
+                    .orElseThrow(() -> new AuthenticationException("User not found"));
+
+            // Ajouter le token à la blacklist
+            tokenBlacklist.addToBlacklist(token);
+            log.info("User {} successfully logged out", username);
+
+        } catch (Exception e) {
+            log.error("Error during logout process: {}", e.getMessage());
+            throw new AuthenticationException("Invalid token or logout failed");
+        }
     }
 }
