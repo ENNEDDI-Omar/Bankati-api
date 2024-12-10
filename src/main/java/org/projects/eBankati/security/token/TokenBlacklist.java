@@ -1,7 +1,8 @@
-package org.projects.eBankati.security;
+package org.projects.eBankati.security.token;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.projects.eBankati.security.service.JwtService;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;

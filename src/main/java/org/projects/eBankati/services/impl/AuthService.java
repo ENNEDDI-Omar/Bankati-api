@@ -10,8 +10,8 @@ import org.projects.eBankati.dto.response.AuthResponse;
 import org.projects.eBankati.exceptions.AuthenticationException;
 import org.projects.eBankati.repositories.RoleRepository;
 import org.projects.eBankati.repositories.UserRepository;
-import org.projects.eBankati.security.JwtService;
-import org.projects.eBankati.security.TokenBlacklist;
+import org.projects.eBankati.security.service.JwtService;
+import org.projects.eBankati.security.token.TokenBlacklist;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,12 +41,9 @@ public class AuthService {
         User user = createUser(request);
         userRepository.save(user);
 
-        // Génération du token
-        String token = jwtService.generateToken(user);
 
         return AuthResponse.builder()
                 .message("User registered successfully")
-                .token(token)
                 .success(true)
                 .build();
     }
@@ -62,7 +59,17 @@ public class AuthService {
                 User user = userRepository.findByUsername(request.getUsername())
                         .orElseThrow(() -> new AuthenticationException("User not found"));
 
-                String token = jwtService.generateToken(user);
+                var token = jwtService.generateToken(
+                        new org.springframework.security.core.userdetails.User(
+                                user.getUsername(),
+                                user.getPassword(),
+                                java.util.Collections.singleton(
+                                        new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                                                "ROLE_" + user.getRole().getName()
+                                        )
+                                )
+                        )
+                );
 
                 return AuthResponse.builder()
                         .message("Login successful")
