@@ -12,9 +12,11 @@ import org.projects.eBankati.repositories.RoleRepository;
 import org.projects.eBankati.repositories.UserRepository;
 import org.projects.eBankati.security.service.JwtService;
 import org.projects.eBankati.security.token.TokenBlacklist;
+import org.projects.eBankati.services.interfaces.UserService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -117,4 +119,11 @@ public class AuthService {
             throw new AuthenticationException("Invalid token or logout failed");
         }
     }
+
+    public boolean isAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
 }
