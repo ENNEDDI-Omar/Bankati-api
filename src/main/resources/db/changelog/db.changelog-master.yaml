@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-insert-initial-roles.yaml
   - include:
       file: db/changelog/changes/004-add-performance-indexes.yaml
+  - include:
+      file: db/changelog/changes/005-create-refresh-token-table.yaml

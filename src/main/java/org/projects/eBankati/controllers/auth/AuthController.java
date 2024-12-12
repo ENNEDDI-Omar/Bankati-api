@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.projects.eBankati.dto.request.LoginRequest;
+import org.projects.eBankati.dto.request.RefreshTokenRequest;
 import org.projects.eBankati.dto.request.RegisterRequest;
 import org.projects.eBankati.dto.response.AuthResponse;
 import org.projects.eBankati.services.impl.AuthService;
@@ -25,7 +26,7 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Registration error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null, false));
+            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null, null, false));
         }
     }
 
@@ -36,23 +37,38 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Login error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null, false));
+            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null, null, false));
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
+    public ResponseEntity<?> logout(HttpServletRequest request, @RequestParam(required = false) String refreshToken) {
         try {
             String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                authService.logout(token);
-                return ResponseEntity.ok(new AuthResponse("Logout successful", null, true));
+            String accessToken = null;
+
+            if (authHeader != null && authHeader.startsWith("Bearer "))
+            {
+                accessToken = authHeader.substring(7);
             }
-            return ResponseEntity.badRequest().body(new AuthResponse("No token provided", null, false));
+
+            authService.logout(accessToken, refreshToken);
+                return ResponseEntity.ok(new AuthResponse("Logout successful", null, null, true));
+
         } catch (Exception e) {
             log.error("Logout error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AuthResponse("Logout failed", null, false));
+            return ResponseEntity.badRequest().body(new AuthResponse("Logout failed", null, null, false));
+        }
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@RequestBody @Valid RefreshTokenRequest request) {
+        try {
+            AuthResponse response = authService.refreshToken(request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new AuthResponse(e.getMessage(), null, null, false));
         }
     }
 }

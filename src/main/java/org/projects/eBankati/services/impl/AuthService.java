@@ -2,19 +2,23 @@ package org.projects.eBankati.services.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.projects.eBankati.domain.entities.RefreshToken;
 import org.projects.eBankati.domain.entities.Role;
 import org.projects.eBankati.domain.entities.User;
 import org.projects.eBankati.dto.request.LoginRequest;
+import org.projects.eBankati.dto.request.RefreshTokenRequest;
 import org.projects.eBankati.dto.request.RegisterRequest;
 import org.projects.eBankati.dto.response.AuthResponse;
 import org.projects.eBankati.exceptions.AuthenticationException;
 import org.projects.eBankati.repositories.RoleRepository;
 import org.projects.eBankati.repositories.UserRepository;
 import org.projects.eBankati.security.service.JwtService;
+import org.projects.eBankati.security.service.RefreshTokenService;
 import org.projects.eBankati.security.token.TokenBlacklist;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,18 +33,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
     private final TokenBlacklist tokenBlacklist;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        // Vérification de l'existence de l'utilisateur
+
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new AuthenticationException("Username already taken");
         }
 
-        // Création de l'utilisateur
         User user = createUser(request);
         userRepository.save(user);
-
 
         return AuthResponse.builder()
                 .message("User registered successfully")
@@ -48,32 +52,29 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         try {
-            // Authentification
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
 
-            if (authentication.isAuthenticated()) {
+            if (authentication.isAuthenticated())
+            {
+
                 User user = userRepository.findByUsername(request.getUsername())
                         .orElseThrow(() -> new AuthenticationException("User not found"));
 
-                var token = jwtService.generateToken(
-                        new org.springframework.security.core.userdetails.User(
-                                user.getUsername(),
-                                user.getPassword(),
-                                java.util.Collections.singleton(
-                                        new org.springframework.security.core.authority.SimpleGrantedAuthority(
-                                                "ROLE_" + user.getRole().getName()
-                                        )
-                                )
-                        )
-                );
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(request.getUsername());
+
+                String accessToken = jwtService.generateToken(userDetails);
+
+                RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
                 return AuthResponse.builder()
                         .message("Login successful")
-                        .token(token)
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken.getToken())
                         .success(true)
                         .build();
             }
@@ -97,24 +98,35 @@ public class AuthService {
                 .build();
     }
 
-    public void logout(String token) {
-        if (token == null || token.isEmpty()) {
-            throw new AuthenticationException("Token is required for logout");
+    @Transactional
+    public void logout(String accessToken, String refreshToken) {
+        if (accessToken != null) {
+            tokenBlacklist.addToBlacklist(accessToken);
         }
+        if (refreshToken != null) {
+            refreshTokenService.revokeRefreshToken(refreshToken);
+        }
+    }
 
+    @Transactional
+    public AuthResponse refreshToken(RefreshTokenRequest request) {
         try {
-            // Vérifier si le token est valide avant de le blacklister
-            String username = jwtService.extractUsername(token);
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new AuthenticationException("User not found"));
+            RefreshToken refreshToken = refreshTokenService.verifyExpiration(request.getRefreshToken());
+            User user = refreshToken.getUser();
 
-            // Ajouter le token à la blacklist
-            tokenBlacklist.addToBlacklist(token);
-            log.info("User {} successfully logged out", username);
+            // Convertir User en UserDetails pour générer le token
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getUsername());
+            String accessToken = jwtService.generateToken(userDetails);
 
+            return AuthResponse.builder()
+                    .message("Token refreshed successfully")
+                    .accessToken(accessToken)
+                    .refreshToken(request.getRefreshToken())
+                    .success(true)
+                    .build();
         } catch (Exception e) {
-            log.error("Error during logout process: {}", e.getMessage());
-            throw new AuthenticationException("Invalid token or logout failed");
+            log.error("Error refreshing token: {}", e.getMessage());
+            throw new AuthenticationException("Token refresh failed: " + e.getMessage());
         }
     }
 }
