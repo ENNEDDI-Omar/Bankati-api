@@ -6,6 +6,7 @@ import org.projects.eBankati.security.filter.JwtAuthenticationFilter;
 import org.projects.eBankati.services.impl.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -25,9 +26,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final CorsConfigurationSource corsConfigurationSource;
     private final SecurityExceptionHandler securityExceptionHandler;
     private final CustomUserDetailsService customUserDetailsService;
-    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -35,13 +36,32 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/api/public/**",
-                                "/error"
-                        ).permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/employee/**").hasRole("EMPLOYEE")
+                        // Endpoints publics
+                        .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+                        .requestMatchers("/error", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+
+                        // Endpoints des comptes bancaires
+                        .requestMatchers("/api/accounts/create").hasAnyRole("ADMIN", "EMPLOYEE")
+                        .requestMatchers("/api/accounts/{accountId}").hasAnyRole("USER", "ADMIN", "EMPLOYEE")
+                        .requestMatchers("/api/accounts/all").hasRole("ADMIN")
+
+                        // Endpoints des transactions
+                        .requestMatchers("/api/transactions/create").hasAnyRole("USER", "EMPLOYEE")
+                        .requestMatchers("/api/transactions/{transactionId}").hasAnyRole("USER", "ADMIN", "EMPLOYEE")
+                        .requestMatchers("/api/transactions/all").hasRole("ADMIN")
+
+                        // Endpoints des prêts
+                        .requestMatchers("/api/loans/apply").hasRole("USER")
+                        .requestMatchers("/api/loans/approve/**").hasAnyRole("ADMIN", "EMPLOYEE")
+                        .requestMatchers("/api/loans/all").hasRole("ADMIN")
+
+                        // Gestion des utilisateurs
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAnyRole("ADMIN", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.POST, "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+
+                        // Tout autre endpoint nécessite une authentification
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
