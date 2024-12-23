@@ -60,7 +60,7 @@ pipeline {
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
+                    sh 'ls -la target/surefire-reports' // Lists the test result files in the target/surefire-reports directory
                     jacoco(
                         execPattern: '**/target/*.exec',
                         classPattern: '**/target/classes',
