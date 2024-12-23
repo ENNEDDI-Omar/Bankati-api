@@ -6,70 +6,96 @@ pipeline {
     }
 
     environment {
+        APP_NAME = 'e-bankati'
         DOCKER_IMAGE = 'banking-system'
         DOCKER_TAG = "${BUILD_NUMBER}"
         SONAR_TOKEN = credentials('sonar-token')
         MAVEN_OPTS = '-Dmaven.test.failure.ignore=true'
+        DOCKER_CREDENTIALS = credentials('docker-hub-credentials')
     }
 
     stages {
         stage('Checkout') {
             steps {
+                cleanWs()
                 checkout scm
             }
         }
 
-        stage('Environment Check') {
-            steps {
-                sh '''
-                    java -version
-                    mvn --version
-                    docker version
-                '''
-            }
-        }
+        stage('Build & Test') {
+            stages {
+                stage('Compile') {
+                    steps {
+                        sh 'mvn clean compile -DskipTests'
+                    }
+                }
 
-        stage('Build & Unit Tests') {
-            steps {
-                sh '''
-                    mvn clean test \
-                        -Dspring.profiles.active=test \
-                        -B -V
-                '''
-            }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                    jacoco(
-                        execPattern: '**/target/*.exec',
-                        classPattern: '**/target/classes',
-                        sourcePattern: '**/src/main/java',
-                        exclusionPattern: '**/test/**'
-                    )
+                stage('Unit Tests') {
+                    steps {
+                        sh 'mvn test -Dspring.profiles.active=test'
+                    }
+                    post {
+                        always {
+                            junit '**/target/surefire-reports/*.xml'
+                            jacoco(
+                                execPattern: '**/target/*.exec',
+                                classPattern: '**/target/classes',
+                                sourcePattern: '**/src/main/java',
+                                exclusionPattern: '**/test/**'
+                            )
+                        }
+                        failure {
+                            emailext(
+                                subject: "❌ Tests Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                                body: "Les tests unitaires ont échoué. Voir: ${env.BUILD_URL}",
+                                to: 'enneddiomar@gmail.com'
+                            )
+                        }
+                    }
+                }
+
+                stage('Package') {
+                    steps {
+                        sh 'mvn package -DskipTests'
+                        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                    }
                 }
             }
         }
 
-        stage('Package') {
-            steps {
-                sh 'mvn package -DskipTests'
-            }
-        }
+        stage('Quality Analysis') {
+            parallel {
+                stage('SonarQube') {
+                    steps {
+                        withSonarQubeEnv('SonarQube') {
+                            sh '''
+                                mvn sonar:sonar \
+                                    -Dsonar.projectKey=${APP_NAME} \
+                                    -Dsonar.projectName="E-Bankati System" \
+                                    -Dsonar.host.url=http://sonarqube:9000 \
+                                    -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                            '''
+                        }
+                        timeout(time: 2, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
+                        }
+                    }
+                }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=${DOCKER_IMAGE} \
-                            -Dsonar.projectName=BankingSystem \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                    '''
+                stage('Dependency Check') {
+                    steps {
+                        sh 'mvn dependency-check:check'
+                    }
+                    post {
+                        always {
+                            dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Build & Push Docker Image') {
+        stage('Docker Build & Push') {
             steps {
                 script {
                     def dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
@@ -86,21 +112,31 @@ pipeline {
                 stage('Approval') {
                     steps {
                         timeout(time: 5, unit: 'MINUTES') {
-                            input message: 'Deploy to production?'
+                            input message: '⚠️ Déployer en production ?', ok: 'Approuver'
                         }
                     }
                 }
+
                 stage('Deploy') {
                     steps {
-                        sh '''
-                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            docker stop ${DOCKER_IMAGE} || true
-                            docker rm ${DOCKER_IMAGE} || true
-                            docker run -d --name ${DOCKER_IMAGE} \
-                                -p 8081:8081 \
-                                -e SPRING_PROFILES_ACTIVE=prod \
-                                ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        '''
+                        script {
+                            sh """
+                                docker stop ${DOCKER_IMAGE} || true
+                                docker rm ${DOCKER_IMAGE} || true
+                                docker run -d \
+                                    --name ${DOCKER_IMAGE} \
+                                    -p 8081:8081 \
+                                    -e SPRING_PROFILES_ACTIVE=prod \
+                                    -e DB_Username=\${DB_USERNAME} \
+                                    -e DB_Password=\${DB_PASSWORD} \
+                                    ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            """
+                        }
+                    }
+                    post {
+                        success {
+                            echo "🚀 Application déployée avec succès!"
+                        }
                     }
                 }
             }
@@ -109,29 +145,37 @@ pipeline {
 
     post {
         success {
-            emailext (
-                subject: "✅ Pipeline Success - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            emailext(
+                subject: "✅ Pipeline Réussi - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    Le pipeline s'est terminé avec succès !
+                    Le pipeline s'est terminé avec succès!
 
-                    Build URL: ${env.BUILD_URL}
-                    Project: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
+                    Détails:
+                    - Job: ${env.JOB_NAME}
+                    - Build: ${env.BUILD_NUMBER}
+                    - URL: ${env.BUILD_URL}
+
+                    Image Docker: ${DOCKER_IMAGE}:${DOCKER_TAG}
                 """,
-                to: 'enneddiomar@gmail.com'
+                to: 'enneddiomar@gmail.com',
+                attachLog: true
             )
         }
         failure {
-            emailext (
-                subject: "❌ Pipeline Failed - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            emailext(
+                subject: "❌ Pipeline Échoué - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    Le pipeline a échoué. Veuillez vérifier les logs.
+                    Le pipeline a échoué.
 
-                    Build URL: ${env.BUILD_URL}
-                    Project: ${env.JOB_NAME}
-                    Build Number: ${env.BUILD_NUMBER}
+                    Détails:
+                    - Job: ${env.JOB_NAME}
+                    - Build: ${env.BUILD_NUMBER}
+                    - URL: ${env.BUILD_URL}
+
+                    Veuillez vérifier les logs pour plus d'informations.
                 """,
-                to: 'enneddiomar@gmail.com'
+                to: 'enneddiomar@gmail.com',
+                attachLog: true
             )
         }
         always {
