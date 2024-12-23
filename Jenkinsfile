@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven' // Replace 'Maven' with the actual name of your Maven installation in Jenkins
+        maven 'Maven'
+        jdk 'JDK17'
     }
 
     environment {
@@ -15,115 +16,127 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    deleteDir() // Clean workspace
-                    echo "Cloning Git repository..."
-                    sh '''
-                        git clone -b dev https://github.com/ENNEDDI-Omar/Bankati.git .
-                        echo "Repository cloned successfully."
-                    '''
-                }
+                checkout scm
             }
         }
 
         stage('Environment Check') {
             steps {
                 sh '''
-                    echo "Git version:"
-                    git --version
-                    echo "Current Git branch:"
-                    git branch --show-current
-                    echo "Git status:"
-                    git status
-                    echo "Java version:"
                     java -version
-                    echo "Maven version:"
                     mvn --version
-                    echo "Working directory contents:"
-                    pwd
-                    ls -la
+                    docker version
                 '''
             }
         }
 
-        stage('Unit Tests') {
+        stage('Build & Unit Tests') {
             steps {
-                sh 'mvn test --batch-mode'
+                sh '''
+                    mvn clean test \
+                        -Dspring.profiles.active=test \
+                        -B -V
+                '''
             }
             post {
                 always {
-                                    junit '**/target/surefire-reports/*.xml'
-                                    jacoco(
-                                        execPattern: '**/target/*.exec',
-                                        classPattern: '**/target/classes',
-                                        sourcePattern: '**/src/main/java',
-                                        exclusionPattern: '**/test/**'
-                                    )
-                                }
+                    junit '**/target/surefire-reports/*.xml'
+                    jacoco(
+                        execPattern: '**/target/*.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java',
+                        exclusionPattern: '**/test/**'
+                    )
+                }
             }
         }
 
-        stage('Build') {
-                    steps {
-                        sh '''
-                            mvn clean package -DskipTests --batch-mode --errors
-                        '''
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        mvn sonar:sonar \
+                            -Dsonar.projectKey=${DOCKER_IMAGE} \
+                            -Dsonar.projectName=BankingSystem \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                    '''
+                }
+            }
+        }
+
+        stage('Build & Push Docker Image') {
+            steps {
+                script {
+                    def dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        dockerImage.push()
+                        dockerImage.push('latest')
                     }
                 }
-
-        stage('Code Quality Analysis') {
-            steps {
-                sh '''
-                    mvn sonar:sonar \
-                        -Dsonar.projectKey=banking-system \
-                        -Dsonar.projectName=BankingSystem \
-                        -Dsonar.host.url=http://sonarqube:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
-                '''
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    docker.build("${DOCKER_IMAGE}:latest")
+        stage('Deploy to Production') {
+            stages {
+                stage('Approval') {
+                    steps {
+                        timeout(time: 5, unit: 'MINUTES') {
+                            input message: 'Deploy to production?'
+                        }
+                    }
                 }
-            }
-        }
-
-        stage('Manual Approval') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    input message: 'Deploy to production?', ok: 'Proceed'
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").run('-p 8081:8080')
+                stage('Deploy') {
+                    steps {
+                        sh '''
+                            docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+                            docker stop ${DOCKER_IMAGE} || true
+                            docker rm ${DOCKER_IMAGE} || true
+                            docker run -d --name ${DOCKER_IMAGE} \
+                                -p 8081:8081 \
+                                -e SPRING_PROFILES_ACTIVE=prod \
+                                ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        '''
+                    }
                 }
             }
         }
     }
 
     post {
-            success {
-                mail to: 'enneddiomar@gmail.com',
-                     subject: "Pipeline Success - eBankify",
-                     body: "Le pipeline Jenkins s'est terminé avec succès !"
-            }
-            failure {
-                mail to: 'enneddiomar@gmail.com',
-                     subject: "Pipeline Failure - eBankify",
-                     body: "Le pipeline Jenkins a échoué. Veuillez vérifier les logs."
-            }
-            unstable {
-                                mail to: 'enneddiomar@gmail.com',
-                                     subject: "Pipeline Unstable - eBankify",
-                                     body: "Le pipeline Jenkins est terminé avec le statut UNSTABLE. Veuillez vérifier les tests ou les avertissements."
-                            }
+        success {
+            emailext (
+                subject: "✅ Pipeline Success - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    Le pipeline s'est terminé avec succès !
+
+                    Build URL: ${env.BUILD_URL}
+                    Project: ${env.JOB_NAME}
+                    Build Number: ${env.BUILD_NUMBER}
+                """,
+                to: 'enneddiomar@gmail.com'
+            )
         }
+        failure {
+            emailext (
+                subject: "❌ Pipeline Failed - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    Le pipeline a échoué. Veuillez vérifier les logs.
+
+                    Build URL: ${env.BUILD_URL}
+                    Project: ${env.JOB_NAME}
+                    Build Number: ${env.BUILD_NUMBER}
+                """,
+                to: 'enneddiomar@gmail.com'
+            )
+        }
+        always {
+            cleanWs()
+        }
+    }
 }

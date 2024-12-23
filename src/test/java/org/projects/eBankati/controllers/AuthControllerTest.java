@@ -34,7 +34,7 @@ public class AuthControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private RoleRepository roleRepository;  // Ajout pour la vérification des rôles
+    private RoleRepository roleRepository;
 
     @BeforeEach
     public void setup() {
