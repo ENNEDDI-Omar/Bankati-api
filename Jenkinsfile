@@ -46,29 +46,30 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                sh '''
-                    mvn clean package -DskipTests --batch-mode --errors
-                '''
-            }
-        }
-
         stage('Unit Tests') {
             steps {
                 sh 'mvn test --batch-mode'
             }
             post {
                 always {
-                    sh 'ls -la target/surefire-reports' // Lists the test result files in the target/surefire-reports directory
-                    jacoco(
-                        execPattern: '**/target/*.exec',
-                        classPattern: '**/target/classes',
-                        sourcePattern: '**/src/main/java'
-                    )
-                }
+                                    junit '**/target/surefire-reports/*.xml'
+                                    jacoco(
+                                        execPattern: '**/target/*.exec',
+                                        classPattern: '**/target/classes',
+                                        sourcePattern: '**/src/main/java',
+                                        exclusionPattern: '**/test/**'
+                                    )
+                                }
             }
         }
+
+        stage('Build') {
+                    steps {
+                        sh '''
+                            mvn clean package -DskipTests --batch-mode --errors
+                        '''
+                    }
+                }
 
         stage('Code Quality Analysis') {
             steps {
