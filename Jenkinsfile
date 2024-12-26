@@ -112,7 +112,7 @@ pipeline {
     post {
             success {
                 mail to: 'enneddiomar@gmail.com',
-                     subject: "Pipeline Success - eBankify Notification",
+                     subject: "Notif:Pipeline Success - eBankify Notification",
                      body: "Le pipeline Jenkins s'est terminé avec succès !"
             }
             failure {
