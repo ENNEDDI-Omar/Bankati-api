@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class RegisterRequest {
-    @NotBlank(message = "Le nom d'utilisateur est obligatoire")
+    @NotBlank(message = "Le nom d'utilisateur est obligatoire!")
     @Size(min = 4, max = 20, message = "Le nom doit contenir entre 4 et 20 caractères")
     private String username;
 
@@ -13,7 +13,7 @@ public class RegisterRequest {
     @Email(message = "Format d'email invalide!")
     private String email;
 
-    @NotBlank(message = "Le mot de passe est obligatoire")
+    @NotBlank(message = "Le mot de passe est obligatoire!")
     @Pattern(
             regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$",
             message = "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial!"
