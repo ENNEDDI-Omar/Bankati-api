@@ -95,7 +95,7 @@
             <version>${modelmapper.version}</version>
         </dependency>
 
-        <!-- Security -->
+        <!-- Security JWT -->
         <dependency>
             <groupId>org.mindrot</groupId>
             <artifactId>jbcrypt</artifactId>
